@@ -1,6 +1,6 @@
 # StockValueCalculator
 
-Stock Value Calculator (Margin of Safety, Intrinsic Value) from Financial statements
+Stock Value Calculator API (Margin of Safety, Intrinsic Value) from Financial statements
 
 Live-Running on Firebase Functions
 <br>source financial statements from SET.OR.TH

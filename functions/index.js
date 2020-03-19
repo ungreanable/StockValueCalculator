@@ -15,29 +15,69 @@ app.use(cors({ origin: true }));
 // build multiple CRUD interfaces:
 
 app.get('/calc/:symbol', (req, res) => {
-    scrapeHTTP(req.params.symbol).then(async info => { 
+
+    (async() => {
+        var a = await GatheringStockInformation(req.params.symbol);
+        res.json(a)
+      })();
+});
+
+app.get('/list/:symbol', (req, res) => {
+    let stockList = [];
+    let calculateList = [];
+    var promises = [];
+    ScrapeSET(req.params.symbol).then(async list => { 
+        list.forEach(element => {
+            if(element.stock) {
+                stockList.push(element.stock);
+            }
+        });
+        
+        stockList.forEach(stock => {
+            promises.push(GatheringStockInformation(stock).then(async info => 
+            { 
+                calculateList.push(info);
+            }).catch( () => { })
+        )});
+        
+        Promise.all(promises).then(function() {
+            res.json(calculateList); 
+        });
+    }).catch( () => { });
+})
+
+async function GatheringStockInformation(symbol) {
+    var promises = [];
+    let calculateList = [];
+    promises.push(ScrapeHTTP(symbol).then( (info) => {
         let currentPrice = 0, 
-        currentPE = 0, firstPE = 0, secondPE = 0, thirdPE = 0, avgPE = 0,
-        firstEPS = 0, secondEPS = 0, thirdEPS = 0, avgEPS = 0,
+        arrPE = [], avgPE = 0,
+        arrEPS = [], avgEPS = 0,
         firstNPM = 0, secondNPM = 0, thirdNPM = 0, fourthNPM = 0,
         avgIncrementalOfNPM = 0, forecastPercentIncreaseProfit = 0,
         intrinsicValue = 0, marginOfSafety = 0;
-        info.forEach(element => {
-            if(element.topic === "ราคาล่าสุด(บาท)")
-                currentPrice = parseFloat(element.firstYear);
-            else if(element.topic === "P/E (เท่า)") {
-                currentPE = parseFloat(element.firstYear);
-                firstPE = parseFloat(element.secondYear);
-                secondPE = parseFloat(element.thirdYear);
-                thirdPE = parseFloat(element.fourthYear);
-                avgPE = (parseFloat(firstPE) + parseFloat(secondPE) + parseFloat(thirdPE)) / 3;
+        info.forEach(element => 
+        {
+            if(element.topic === "ราคาล่าสุด(บาท)") {
+                currentPrice = parseFloat(element.firstYear) > 0 ? parseFloat(element.firstYear) : 0;
+            }
+            else if(element.topic === "P/E (เท่า)") 
+            {
+                !isNaN(parseFloat(element.secondYear)) ? arrPE.push(parseFloat(element.secondYear)) : 0;
+                !isNaN(parseFloat(element.thirdYear)) ? arrPE.push(parseFloat(element.thirdYear)) : 0;
+                !isNaN(parseFloat(element.fourthYear)) ? arrPE.push(parseFloat(element.fourthYear)) : 0;
+                var totalPE = 0;
+                for(var i in arrPE) { totalPE += arrPE[i]; }
+                    avgPE = totalPE / arrPE.length;
             } 
             else if(element.topic === "กำไรต่อหุ้น (บาท)") 
             {
-                firstEPS = parseFloat(element.secondYear);
-                secondEPS = parseFloat(element.thirdYear);
-                thirdEPS = parseFloat(element.fourthYear);
-                avgEPS = (parseFloat(firstEPS + parseFloat(secondEPS) + parseFloat(thirdEPS)) / 3)
+                !isNaN(parseFloat(element.secondYear)) ? arrEPS.push(parseFloat(element.secondYear)) : 0;
+                !isNaN(parseFloat(element.thirdYear)) ? arrEPS.push(parseFloat(element.thirdYear)) : 0;
+                !isNaN(parseFloat(element.fourthYear)) ? arrEPS.push(parseFloat(element.fourthYear)) : 0;
+                var totalEPS = 0;
+                for(var i in arrEPS) { totalEPS += arrEPS[i]; }
+                avgEPS = totalEPS / arrEPS.length;
             }
             else if(element.topic === "อัตรากำไรสุทธิ(%)") 
             {
@@ -51,21 +91,30 @@ app.get('/calc/:symbol', (req, res) => {
                 (parseFloat(thirdNPM) - parseFloat(fourthNPM))) / 3;
             }
         });
-        
+                
         forecastPercentIncreaseProfit = (avgIncrementalOfNPM * 100) / firstNPM;
         intrinsicValue = avgPE * (avgEPS + (avgEPS * forecastPercentIncreaseProfit/100))
         marginOfSafety = 100 - ( (currentPrice * 100) / intrinsicValue)
-        
-        return res.json({ symbol: req.params.symbol, currentPrice: currentPrice, marginOfSafety: marginOfSafety, intrinsicValue: intrinsicValue});
-    }).catch( () => { });
+                
+        calculateList.push({
+            symbol: symbol,
+            currentPrice: currentPrice,
+            marginOfSafety: marginOfSafety,
+            intrinsicValue: intrinsicValue
+        });
+        return calculateList;
+    }));
 
-});
+    return await Promise.all(promises).then(function() {
+        return calculateList;
+    });
+}
 
-async function scrapeHTTP(symbol)
+async function ScrapeHTTP(symbol)
 {
     return await new Promise((resolve, reject) => {
         let info = [];
-        osmosis.get(`http://webcache.googleusercontent.com/search?q=cache:https://www.set.or.th/set/companyhighlight.do?symbol=${symbol}&ssoPageId=5&language=th&country=TH`)
+        osmosis.get(`https://www.set.or.th/set/companyhighlight.do?symbol=${symbol}&ssoPageId=5&language=th&country=TH`)
         .find('.table-info:first tr:gt(0)')
         .set({
             topic: 'td[1]',
@@ -74,6 +123,22 @@ async function scrapeHTTP(symbol)
             thirdYear: 'td[4]',
             secondYear: 'td[5]',
             firstYear: 'td[6]'
+        })
+        .data(item => {
+            info.push(item);
+        })
+        .done(() => resolve(info));
+    });
+}
+
+async function ScrapeSET(symbol)
+{
+    return await new Promise((resolve, reject) => {
+        let info = [];
+        osmosis.get(`https://marketdata.set.or.th/mkt/sectorquotation.do?sector=${symbol}&language=th&country=TH`)
+        .find('.table-info:last tr:gt(0)')
+        .set({
+            stock: 'a',
         })
         .data(item => { 
             info.push(item); 

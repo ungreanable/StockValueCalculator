@@ -23,34 +23,38 @@ app.get('/calc/:symbol', (req, res) => {
 });
 
 app.get('/list/:symbol', (req, res) => {
-    let stockList = [];
-    let calculateList = [];
+    var stockList = [];
+    var calculateList = [];
     var promises = [];
-    ScrapeSET(req.params.symbol).then(async list => { 
+    var promisesSET = [];
+    promisesSET.push(ScrapeSET(req.params.symbol).then(async list => { 
         list.forEach(element => {
             if(element.stock) {
                 stockList.push(element.stock);
             }
         });
-        
-        stockList.forEach(stock => {
+    }).catch( () => { }));
+    Promise.all(promisesSET).then(function() {
+        stockList.forEach(async stock => {
+            (async() => {
             promises.push(GatheringStockInformation(stock).then(async info => 
             { 
                 calculateList.push(info);
-            }).catch( () => { })
-        )});
-        
-        Promise.all(promises).then(function() {
-            res.json(calculateList); 
+            }).catch( () => { }))
+            })();
         });
-    }).catch( () => { });
+        Promise.all(promises).then(function() {
+            res.json(calculateList);
+        });
+    });
+    
 })
 
 async function GatheringStockInformation(symbol) {
     var promises = [];
-    let calculateList = [];
+    var calculateList = [];
     promises.push(ScrapeHTTP(symbol).then( (info) => {
-        let currentPrice = 0, 
+        var currentPrice = 0, 
         arrPE = [], avgPE = 0,
         arrEPS = [], avgEPS = 0,
         firstNPM = 0, secondNPM = 0, thirdNPM = 0, fourthNPM = 0,
@@ -113,7 +117,7 @@ async function GatheringStockInformation(symbol) {
 async function ScrapeHTTP(symbol)
 {
     return await new Promise((resolve, reject) => {
-        let info = [];
+        var info = [];
         osmosis.get(`https://www.set.or.th/set/companyhighlight.do?symbol=${symbol}&ssoPageId=5&language=th&country=TH`)
         .find('.table-info:first tr:gt(0)')
         .set({
@@ -134,7 +138,7 @@ async function ScrapeHTTP(symbol)
 async function ScrapeSET(symbol)
 {
     return await new Promise((resolve, reject) => {
-        let info = [];
+        var info = [];
         osmosis.get(`https://marketdata.set.or.th/mkt/sectorquotation.do?sector=${symbol}&language=th&country=TH`)
         .find('.table-info:last tr:gt(0)')
         .set({

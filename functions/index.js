@@ -19,15 +19,14 @@ app.get('/calc/:symbol', (req, res) => {
     (async() => {
         var a = await GatheringStockInformation(req.params.symbol);
         res.json(a)
-      })();
+    })();
 });
 
 app.get('/list/:symbol', (req, res) => {
     var stockList = [];
-    var calculateList = [];
     var promises = [];
     var promisesSET = [];
-    promisesSET.push(ScrapeSET(req.params.symbol).then(async list => { 
+    promisesSET.push(ScrapeSET(req.params.symbol).then(list => { 
         list.forEach(element => {
             if(element.stock) {
                 stockList.push(element.stock);
@@ -35,13 +34,11 @@ app.get('/list/:symbol', (req, res) => {
         });
     }).catch( () => { }));
     Promise.all(promisesSET).then(function() {
-        stockList.forEach(async stock => {
-            (async() => {
-            promises.push(GatheringStockInformation(stock).then(async info => 
-            { 
+        var calculateList = [];
+        stockList.forEach(stock => {  
+            promises.push(GatheringStockInformation(stock.trim()).then(info => {
                 calculateList.push(info);
-            }).catch( () => { }))
-            })();
+            }))
         });
         Promise.all(promises).then(function() {
             res.json(calculateList);
@@ -54,16 +51,21 @@ async function GatheringStockInformation(symbol) {
     var promises = [];
     var calculateList = [];
     promises.push(ScrapeHTTP(symbol).then( (info) => {
-        var currentPrice = 0, 
+        var currentPrice = 0, arrPrice = [],
         arrPE = [], avgPE = 0,
         arrEPS = [], avgEPS = 0,
-        firstNPM = 0, secondNPM = 0, thirdNPM = 0, fourthNPM = 0,
+        arrNPM = [],
         avgIncrementalOfNPM = 0, forecastPercentIncreaseProfit = 0,
         intrinsicValue = 0, marginOfSafety = 0;
         info.forEach(element => 
         {
             if(element.topic === "ราคาล่าสุด(บาท)") {
-                currentPrice = parseFloat(element.firstYear) > 0 ? parseFloat(element.firstYear) : 0;
+                if( !isNaN(parseFloat(element.firstYear))) { arrPrice.push( parseFloat(element.firstYear) ); }
+                if( !isNaN(parseFloat(element.secondYear))) { arrPrice.push( parseFloat(element.secondYear) ); }
+                if( !isNaN(parseFloat(element.thirdYear))) { arrPrice.push( parseFloat(element.thirdYear) ); }
+                if( !isNaN(parseFloat(element.fourthYear))) { arrPrice.push( parseFloat(element.fourthYear) ); }
+                if( !isNaN(parseFloat(element.fifthYear))) { arrPrice.push( parseFloat(element.fifthYear) ); }
+                currentPrice = arrPrice.length > 0 ? arrPrice[0] : 0;
             }
             else if(element.topic === "P/E (เท่า)") 
             {
@@ -85,28 +87,29 @@ async function GatheringStockInformation(symbol) {
             }
             else if(element.topic === "อัตรากำไรสุทธิ(%)") 
             {
-                firstNPM = parseFloat(element.secondYear);
-                secondNPM = parseFloat(element.thirdYear);
-                thirdNPM = parseFloat(element.fourthYear);
-                fourthNPM = parseFloat(element.fifthYear);
-                avgIncrementalOfNPM = ( 
-                (parseFloat(firstNPM) - parseFloat(secondNPM)) + 
-                (parseFloat(secondNPM) - parseFloat(thirdNPM)) + 
-                (parseFloat(thirdNPM) - parseFloat(fourthNPM))) / 3;
+                if( !isNaN(parseFloat(element.secondYear))) { arrNPM.push( parseFloat(element.secondYear) ); }
+                if( !isNaN(parseFloat(element.thirdYear))) { arrNPM.push( parseFloat(element.thirdYear) ); }
+                if( !isNaN(parseFloat(element.fourthYear))) { arrNPM.push( parseFloat(element.fourthYear) ); }
+                if( !isNaN(parseFloat(element.fifthYear))) { arrNPM.push( parseFloat(element.fifthYear) ); }
+                if(arrNPM.length > 3) {
+                    avgIncrementalOfNPM = ( 
+                    (arrNPM[0] - arrNPM[1]) + 
+                    (arrNPM[1] - arrNPM[2]) + 
+                    (arrNPM[2] - arrNPM[3])) / 3;
+                }
             }
         });
-                
-        forecastPercentIncreaseProfit = (avgIncrementalOfNPM * 100) / firstNPM;
-        intrinsicValue = avgPE * (avgEPS + (avgEPS * forecastPercentIncreaseProfit/100))
-        marginOfSafety = 100 - ( (currentPrice * 100) / intrinsicValue)
-                
+        if(!isNaN(avgIncrementalOfNPM)) {
+            forecastPercentIncreaseProfit = (avgIncrementalOfNPM * 100) / arrNPM[0];
+            intrinsicValue = avgPE * (avgEPS + (avgEPS * forecastPercentIncreaseProfit/100))
+            marginOfSafety = 100 - ( (currentPrice * 100) / intrinsicValue)
+        }
         calculateList.push({
             symbol: symbol,
             currentPrice: currentPrice,
-            marginOfSafety: marginOfSafety,
-            intrinsicValue: intrinsicValue
+            marginOfSafety: !isNaN(marginOfSafety) ? marginOfSafety : "Cannot Calculate",
+            intrinsicValue: !isNaN(intrinsicValue) ? intrinsicValue : "Cannot Calculate"
         });
-        return calculateList;
     }));
 
     return await Promise.all(promises).then(function() {

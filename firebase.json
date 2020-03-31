@@ -16,6 +16,10 @@
       {
         "source": "/calc/**",
         "function": "svc"
+      },
+	  {
+        "source": "/list/**",
+        "function": "svc"
       }
     ]
   }

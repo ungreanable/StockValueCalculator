@@ -50,13 +50,14 @@ app.get('/list/:symbol', (req, res) => {
                 return calculateList;
             }).catch( () => { }))
         });
+        Promise.all(promises).then(() => {
+            res.json(calculateList);
+            return calculateList;
+        }).catch( () => { });
         return calculateList;
     }).catch( () => { });
     
-    Promise.all(promises).then(() => {
-        res.json(calculateList);
-        return calculateList;
-    }).catch( () => { });
+    
 })
 
 async function GatheringStockInformation(symbol) {

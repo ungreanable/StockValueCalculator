@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const osmosis = require('osmosis');
+const request = require('request-promise');
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 //
@@ -13,6 +14,13 @@ const osmosis = require('osmosis');
 // Automatically allow cross-origin requests
 app.use(cors({ origin: true }));
 // build multiple CRUD interfaces:
+
+//For LINEBOT Section
+const LINE_MESSAGING_API = 'https://api.line.me/v2/bot/message';
+const LINE_HEADER = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer YOUR_TOKEN_HERE`
+};
 
 app.get('/calc/:symbol', (req, res) => {
 
@@ -32,19 +40,23 @@ app.get('/list/:symbol', (req, res) => {
                 stockList.push(element.stock);
             }
         });
+        return stockList;
     }).catch( () => { }));
-    Promise.all(promisesSET).then(function() {
+    Promise.all(promisesSET).then(() => {
         var calculateList = [];
         stockList.forEach(stock => {  
             promises.push(GatheringStockInformation(stock.trim()).then(info => {
                 calculateList.push(info);
-            }))
+                return calculateList;
+            }).catch( () => { }))
         });
-        Promise.all(promises).then(function() {
-            res.json(calculateList);
-        });
-    });
+        return calculateList;
+    }).catch( () => { });
     
+    Promise.all(promises).then(() => {
+        res.json(calculateList);
+        return calculateList;
+    }).catch( () => { });
 })
 
 async function GatheringStockInformation(symbol) {
@@ -73,7 +85,7 @@ async function GatheringStockInformation(symbol) {
                 !isNaN(parseFloat(element.thirdYear)) ? arrPE.push(parseFloat(element.thirdYear)) : 0;
                 !isNaN(parseFloat(element.fourthYear)) ? arrPE.push(parseFloat(element.fourthYear)) : 0;
                 var totalPE = 0;
-                for(var i in arrPE) { totalPE += arrPE[i]; }
+                for(let i in arrPE) { totalPE += arrPE[i]; }
                     avgPE = totalPE / arrPE.length;
             } 
             else if(element.topic === "กำไรต่อหุ้น (บาท)") 
@@ -82,7 +94,7 @@ async function GatheringStockInformation(symbol) {
                 !isNaN(parseFloat(element.thirdYear)) ? arrEPS.push(parseFloat(element.thirdYear)) : 0;
                 !isNaN(parseFloat(element.fourthYear)) ? arrEPS.push(parseFloat(element.fourthYear)) : 0;
                 var totalEPS = 0;
-                for(var i in arrEPS) { totalEPS += arrEPS[i]; }
+                for(let i in arrEPS) { totalEPS += arrEPS[i]; }
                 avgEPS = totalEPS / arrEPS.length;
             }
             else if(element.topic === "อัตรากำไรสุทธิ(%)") 
@@ -110,18 +122,21 @@ async function GatheringStockInformation(symbol) {
             marginOfSafety: !isNaN(marginOfSafety) ? marginOfSafety : "Cannot Calculate",
             intrinsicValue: !isNaN(intrinsicValue) ? intrinsicValue : "Cannot Calculate"
         });
+        return calculateList;
     }));
 
-    return await Promise.all(promises).then(function() {
+    return await Promise.all(promises).then(() => {
         return calculateList;
     });
 }
 
 async function ScrapeHTTP(symbol)
 {
+	var url = "";
+	url = `https://www.settrade.com/C04_06_stock_financial_p1.jsp?txtSymbol=${symbol}&ssoPageId=13&selectPage=6`;
     return await new Promise((resolve, reject) => {
         var info = [];
-        osmosis.get(`https://www.set.or.th/set/companyhighlight.do?symbol=${symbol}&ssoPageId=5&language=th&country=TH`)
+		osmosis.get(url)
         .find('.table-info:first tr:gt(0)')
         .set({
             topic: 'td[1]',
@@ -134,6 +149,9 @@ async function ScrapeHTTP(symbol)
         .data(item => {
             info.push(item);
         })
+		.error(err => { 
+			console.log(err)
+		})
         .done(() => resolve(info));
     });
 }
@@ -150,9 +168,67 @@ async function ScrapeSET(symbol)
         .data(item => { 
             info.push(item); 
          })
+		.error(err => { 
+			console.log(err)
+		})
         .done(() => resolve(info))
     });
 }
+
+const reply = async (bodyResponse, res, msg) => {
+    try {
+        await request({
+            method: `POST`,
+            uri: `${LINE_MESSAGING_API}/reply`,
+            headers: LINE_HEADER,
+            body: JSON.stringify({
+                replyToken: bodyResponse.events[0].replyToken,
+                messages: [
+                    {
+                        type: `text`,
+                        text: msg
+                    }
+                ]
+            })
+        });
+        return res.status(200).send("SUCCESS");
+    }
+    catch (error) {
+        return Promise.reject(error);
+    }
+};
+
+
+app.post('/linebot', (req, res) => {
+    if (req.body.events[0].message.type !== 'text') {
+        res.status(200).send('Done');
+    }
+    else 
+    {
+        let textFromLine = req.body.events[0].message.text;
+        if(textFromLine) {
+            let stockName = "";
+            if(textFromLine.includes("หุ้น ")) {
+                let splitText = textFromLine.split(" ");
+                stockName = splitText && splitText.length > 0 && splitText[1] ? splitText[1] : "";
+                if(stockName) {
+                    (async() => {
+                        let stockInfo = await GatheringStockInformation(stockName);
+                        if(stockInfo && stockInfo.length > 0 && stockInfo[0].currentPrice !== 0) {
+                            stockInfo.forEach(item => {
+                                let msg = `ชื่อหุ้น: ${item.symbol}\nราคาปัจจุบัน (บาท): ${item.currentPrice}\nส่วนเผื่อความปลอดภัย: ${item.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${item.intrinsicValue.toFixed(2)}`;
+                                reply(req.body, res, msg);
+                            });
+                        }
+                        else reply(req.body, res, `ไม่พบหุ้น ${stockName} หรือไม่สามารคำนวณมูลค่าได้ในขณะนี้ โปรดลองใหม่อีกครั้ง`);
+                    })();
+                }
+            }
+        }
+        res.status(200);
+    }
+})
+//
 
 // Expose Express API as a single Cloud Function:
 exports.svc = functions.https.onRequest(app);

@@ -67,9 +67,10 @@ async function GatheringStockInformation(symbol) {
         var currentPrice = 0, arrPrice = [],
         arrPE = [], avgPE = 0,
         arrEPS = [], avgEPS = 0,
-        arrNPM = [],
+        arrNPM = [], avgNPM = 0,
         avgIncrementalOfNPM = 0, forecastPercentIncreaseProfit = 0,
-        intrinsicValue = 0, marginOfSafety = 0;
+        intrinsicValue = 0, marginOfSafety = 0,
+        asset = 0.00, debt = 0.00, shareCapital = 0.00, paidShareCapital = 0, revenue = 0, netProfitMargin = 0;
         info.forEach(element => 
         {
             if(element.topic === "ราคาล่าสุด(บาท)") {
@@ -105,23 +106,65 @@ async function GatheringStockInformation(symbol) {
                 if( !isNaN(parseFloat(element.fourthYear))) { arrNPM.push( parseFloat(element.fourthYear) ); }
                 if( !isNaN(parseFloat(element.fifthYear))) { arrNPM.push( parseFloat(element.fifthYear) ); }
                 if(arrNPM.length > 3) {
+                    var totalNPM = 0;
+                    for(let i in arrNPM) { totalNPM += arrNPM[i]; }
+                    avgNPM = totalNPM / arrNPM.length;
+
                     avgIncrementalOfNPM = ( 
                     (arrNPM[0] - arrNPM[1]) + 
                     (arrNPM[1] - arrNPM[2]) + 
                     (arrNPM[2] - arrNPM[3])) / 3;
                 }
             }
+            else if(element.topic === "สินทรัพย์รวม")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { asset = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { asset = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
+            else if(element.topic === "หนี้สินรวม")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { debt = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { debt = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
+            else if(element.topic === "ส่วนของผู้ถือหุ้น")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
+            else if(element.topic === "มูลค่าหุ้นที่เรียกชำระแล้ว")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
+            else if(element.topic === "รายได้รวม")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { revenue = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { revenue = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
+            else if(element.topic === "กำไรสุทธิ")
+            {
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.secondYear.replace(/,/g, '')) }
+            }
         });
         if(!isNaN(avgIncrementalOfNPM)) {
-            forecastPercentIncreaseProfit = (avgIncrementalOfNPM * 100) / arrNPM[0];
+            forecastPercentIncreaseProfit = ( (avgIncrementalOfNPM * 100) / arrNPM[0]);
             intrinsicValue = avgPE * (avgEPS + (avgEPS * forecastPercentIncreaseProfit/100))
             marginOfSafety = 100 - ( (currentPrice * 100) / intrinsicValue)
         }
         calculateList.push({
             symbol: symbol,
             currentPrice: currentPrice,
-            marginOfSafety: !isNaN(marginOfSafety) ? marginOfSafety : "Cannot Calculate",
-            intrinsicValue: !isNaN(intrinsicValue) ? intrinsicValue : "Cannot Calculate"
+            currentAsset: asset,
+            currentDebt: debt,
+            currentShareCapital: shareCapital,
+            currentPaidShareCapital: paidShareCapital,
+            currentRevenue: revenue,
+            currentNPM: netProfitMargin,
+            currentEPS: arrEPS[0],
+            currentNPMRatio: arrNPM[0],
+            marginOfSafety: !isNaN(marginOfSafety) && intrinsicValue > 0 ? marginOfSafety : "ไม่สามารถคำนวณได้",
+            intrinsicValue: !isNaN(intrinsicValue) && intrinsicValue > 0 ? intrinsicValue : "ไม่สามารถคำนวณได้"
         });
         return calculateList;
     }));
@@ -217,7 +260,8 @@ app.post('/linebot', (req, res) => {
                         let stockInfo = await GatheringStockInformation(stockName);
                         if(stockInfo && stockInfo.length > 0 && stockInfo[0].currentPrice !== 0) {
                             stockInfo.forEach(item => {
-                                let msg = `ชื่อหุ้น: ${item.symbol}\nราคาปัจจุบัน (บาท): ${item.currentPrice}\nส่วนเผื่อความปลอดภัย: ${item.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${item.intrinsicValue.toFixed(2)}`;
+                                let msg = `ชื่อหุ้น: ${item.symbol}\nราคาปัจจุบัน (บาท): ${item.currentPrice}\nส่วนเผื่อความปลอดภัย: ${item.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${item.intrinsicValue.toFixed(2)}\n
+บัญชีทางการเงินที่สำคัญ (ล่าสุด) (ล้านบาท)\nสินทรัพย์รวม: ${item.currentAsset.toLocaleString()}\nหนี้สินรวม: ${item.currentDebt.toLocaleString()}\nส่วนของผู้ถือหุ้น: ${item.currentShareCapital.toLocaleString()}\nมูลค่าหุ้นที่เรียกชำระแล้ว: ${item.currentPaidShareCapital.toLocaleString()}\nรายได้รวม: ${item.currentRevenue.toLocaleString()}\nกำไรสุทธิ: ${item.currentNPM.toLocaleString()}\nกำไรต่อหุ้น (บาท): ${item.currentEPS}\nอัตรากำไรสุทธิ: ${item.currentNPMRatio}%`;
                                 reply(req.body, res, msg);
                             });
                         }

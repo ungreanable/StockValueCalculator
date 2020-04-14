@@ -118,33 +118,33 @@ async function GatheringStockInformation(symbol) {
             }
             else if(element.topic === "สินทรัพย์รวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { asset = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { asset = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { asset = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { asset = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
             else if(element.topic === "หนี้สินรวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { debt = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { debt = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { debt = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { debt = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
             else if(element.topic === "ส่วนของผู้ถือหุ้น")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
             else if(element.topic === "มูลค่าหุ้นที่เรียกชำระแล้ว")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
             else if(element.topic === "รายได้รวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { revenue = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { revenue = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { revenue = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { revenue = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
             else if(element.topic === "กำไรสุทธิ")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.firstYear) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.secondYear) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.firstYear.replace(/,/g, '')) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.secondYear.replace(/,/g, '')) }
             }
         });
         if(!isNaN(avgIncrementalOfNPM)) {

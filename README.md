@@ -1,6 +1,6 @@
 # StockValueCalculator (Firebase Function)
 
-Stock Value Calculator API (Margin of Safety, Intrinsic Value) from Financial statements
+Stock Value Calculator API (Margin of Safety, Intrinsic Value and other Information) from Financial statements
 <br>source financial statements from SET.or.th
 
 # Requirement
@@ -10,14 +10,19 @@ Stock Value Calculator API (Margin of Safety, Intrinsic Value) from Financial st
 + npm install request-promise
 ```
 
-# How to start Firebase Function localhost
+# How to start Firebase Function on your localhost
 - firebase serve (or firebase serve --only functions)
 
-# Example (Return JSON)
-- http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/AOT
-- http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/ADVANC
-- http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/CPALL
-- http://localhost:5000/stock-value-calculator-svc/us-central1/svc/list/SET50 (All of SET50)
+# Example on your localhost (Return JSON)
+```diff
+http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/YOUR_STOCK_HERE
+```
+```diff
+http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/AOT
+http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/ADVANC
+http://localhost:5000/stock-value-calculator-svc/us-central1/svc/calc/CPALL
+http://localhost:5000/stock-value-calculator-svc/us-central1/svc/list/SET50 (All of SET50)
+```
 
 # LINEBOT
 - You need to get your LINE token 

@@ -62,7 +62,7 @@ app.get('/list/:symbol', (req, res) => {
 
 async function GatheringStockInformation(symbol) {
     var promises = [];
-    var calculateList = [];
+    var calculateList = {};
     promises.push(ScrapeHTTP(symbol).then( (info) => {
         var currentPrice = 0, arrPrice = [],
         arrPE = [], avgPE = 0,
@@ -118,33 +118,33 @@ async function GatheringStockInformation(symbol) {
             }
             else if(element.topic === "สินทรัพย์รวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { asset = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { asset = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { asset = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { asset = parseFloat(element.secondYear) }
             }
             else if(element.topic === "หนี้สินรวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { debt = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { debt = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { debt = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { debt = parseFloat(element.secondYear) }
             }
             else if(element.topic === "ส่วนของผู้ถือหุ้น")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { shareCapital = parseFloat(element.secondYear) }
             }
             else if(element.topic === "มูลค่าหุ้นที่เรียกชำระแล้ว")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { paidShareCapital = parseFloat(element.secondYear) }
             }
             else if(element.topic === "รายได้รวม")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { revenue = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { revenue = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { revenue = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { revenue = parseFloat(element.secondYear) }
             }
             else if(element.topic === "กำไรสุทธิ")
             {
-                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.firstYear.replace(/,/g, '')) }
-                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.secondYear.replace(/,/g, '')) }
+                if( !isNaN(parseFloat(element.firstYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.firstYear) }
+                else if( !isNaN(parseFloat(element.secondYear.replace(/,/g, '')))) { netProfitMargin = parseFloat(element.secondYear) }
             }
         });
         if(!isNaN(avgIncrementalOfNPM)) {
@@ -152,7 +152,7 @@ async function GatheringStockInformation(symbol) {
             intrinsicValue = avgPE * (avgEPS + (avgEPS * forecastPercentIncreaseProfit/100))
             marginOfSafety = 100 - ( (currentPrice * 100) / intrinsicValue)
         }
-        calculateList.push({
+        calculateList = {
             symbol: symbol,
             currentPrice: currentPrice,
             currentAsset: asset,
@@ -165,7 +165,7 @@ async function GatheringStockInformation(symbol) {
             currentNPMRatio: arrNPM[0],
             marginOfSafety: !isNaN(marginOfSafety) && intrinsicValue > 0 ? marginOfSafety : "ไม่สามารถคำนวณได้",
             intrinsicValue: !isNaN(intrinsicValue) && intrinsicValue > 0 ? intrinsicValue : "ไม่สามารถคำนวณได้"
-        });
+        };
         return calculateList;
     }));
 
@@ -258,12 +258,10 @@ app.post('/linebot', (req, res) => {
                 if(stockName) {
                     (async() => {
                         let stockInfo = await GatheringStockInformation(stockName);
-                        if(stockInfo && stockInfo.length > 0 && stockInfo[0].currentPrice !== 0) {
-                            stockInfo.forEach(item => {
-                                let msg = `ชื่อหุ้น: ${item.symbol}\nราคาปัจจุบัน (บาท): ${item.currentPrice}\nส่วนเผื่อความปลอดภัย: ${item.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${item.intrinsicValue.toFixed(2)}\n
-บัญชีทางการเงินที่สำคัญ (ล่าสุด) (ล้านบาท)\nสินทรัพย์รวม: ${item.currentAsset.toLocaleString()}\nหนี้สินรวม: ${item.currentDebt.toLocaleString()}\nส่วนของผู้ถือหุ้น: ${item.currentShareCapital.toLocaleString()}\nมูลค่าหุ้นที่เรียกชำระแล้ว: ${item.currentPaidShareCapital.toLocaleString()}\nรายได้รวม: ${item.currentRevenue.toLocaleString()}\nกำไรสุทธิ: ${item.currentNPM.toLocaleString()}\nกำไรต่อหุ้น (บาท): ${item.currentEPS}\nอัตรากำไรสุทธิ: ${item.currentNPMRatio}%`;
+                        if(stockInfo && stockInfo.currentPrice !== 0) {
+                                let msg = `ชื่อหุ้น: ${stockInfo.symbol}\nราคาปัจจุบัน (บาท): ${stockInfo.currentPrice}\nส่วนเผื่อความปลอดภัย: ${stockInfo.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${stockInfo.intrinsicValue.toFixed(2)}\n
+บัญชีทางการเงินที่สำคัญ (ล่าสุด) (ล้านบาท)\nสินทรัพย์รวม: ${stockInfo.currentAsset.toLocaleString()}\nหนี้สินรวม: ${stockInfo.currentDebt.toLocaleString()}\nส่วนของผู้ถือหุ้น: ${stockInfo.currentShareCapital.toLocaleString()}\nมูลค่าหุ้นที่เรียกชำระแล้ว: ${stockInfo.currentPaidShareCapital.toLocaleString()}\nรายได้รวม: ${stockInfo.currentRevenue.toLocaleString()}\nกำไรสุทธิ: ${stockInfo.currentNPM.toLocaleString()}\nกำไรต่อหุ้น (บาท): ${stockInfo.currentEPS}\nอัตรากำไรสุทธิ: ${stockInfo.currentNPMRatio}%`;
                                 reply(req.body, res, msg);
-                            });
                         }
                         else reply(req.body, res, `ไม่พบหุ้น ${stockName} หรือไม่สามารคำนวณมูลค่าได้ในขณะนี้ โปรดลองใหม่อีกครั้ง`);
                     })();

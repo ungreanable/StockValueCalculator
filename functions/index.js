@@ -259,7 +259,7 @@ app.post('/linebot', (req, res) => {
                     (async() => {
                         let stockInfo = await GatheringStockInformation(stockName);
                         if(stockInfo && stockInfo.currentPrice !== 0) {
-                                let msg = `ชื่อหุ้น: ${stockInfo.symbol}\nราคาปัจจุบัน (บาท): ${stockInfo.currentPrice}\nส่วนเผื่อความปลอดภัย: ${stockInfo.marginOfSafety.toFixed(2)}%\nมูลค่าที่แท้จริง (บาท): ${stockInfo.intrinsicValue.toFixed(2)}\n
+                                let msg = `ชื่อหุ้น: ${stockInfo.symbol}\nราคาปัจจุบัน (บาท): ${stockInfo.currentPrice}\n\uDBC0\uDC50ส่วนเผื่อความปลอดภัย: ${stockInfo.marginOfSafety.toFixed(2)}%\uDBC0\uDC50\n\uDBC0\uDC35มูลค่าที่แท้จริง (บาท): ${stockInfo.intrinsicValue.toFixed(2)}\uDBC0\uDC35\n
 บัญชีทางการเงินที่สำคัญ (ล่าสุด) (ล้านบาท)\nสินทรัพย์รวม: ${stockInfo.currentAsset.toLocaleString()}\nหนี้สินรวม: ${stockInfo.currentDebt.toLocaleString()}\nส่วนของผู้ถือหุ้น: ${stockInfo.currentShareCapital.toLocaleString()}\nมูลค่าหุ้นที่เรียกชำระแล้ว: ${stockInfo.currentPaidShareCapital.toLocaleString()}\nรายได้รวม: ${stockInfo.currentRevenue.toLocaleString()}\nกำไรสุทธิ: ${stockInfo.currentNPM.toLocaleString()}\nกำไรต่อหุ้น (บาท): ${stockInfo.currentEPS}\nอัตรากำไรสุทธิ: ${stockInfo.currentNPMRatio}%`;
                                 reply(req.body, res, msg);
                         }
